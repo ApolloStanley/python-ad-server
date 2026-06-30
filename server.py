@@ -20,7 +20,7 @@ def my_ip(iface="en0"):
         ).strip()
         if ip:
             return ip
-    except subprocess.CalledProcessError, FileNotFoundError:
+    except (subprocess.CalledProcessError, FileNotFoundError):
         pass
     # Cross-platform fallback: ask the OS which local address it would use to
     # reach the internet (no packets are actually sent).
