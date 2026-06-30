@@ -4,13 +4,14 @@ import os
 import urllib.request
 from urllib.parse import urlparse, parse_qs
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from media.VAST.vast_options import vast_simple, vast_custom
+from media.VAST.vast_options import vast_simple, vast_custom, vast_multiple
 
 PORT = 8082
 MEDIA_FILE = "./media/ad_one.mp4"
-# URL paths the player may request for the video. These are just labels we map
-# to MEDIA_FILE on disk; they don't need to match the file's real location.
-MEDIA_ROUTES = {"/media.mp4", "/media"}
+MEDIA_FILES = {
+    "/ad_one.mp4": "./media/ad_one.mp4",
+    "/ad_two.mp4": "./media/ad_two.mp4",
+}
 
 
 def my_ip(iface="en0"):
@@ -20,7 +21,7 @@ def my_ip(iface="en0"):
         ).strip()
         if ip:
             return ip
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except subprocess.CalledProcessError, FileNotFoundError:
         pass
     # Cross-platform fallback: ask the OS which local address it would use to
     # reach the internet (no packets are actually sent).
@@ -58,15 +59,15 @@ def ensure_media_file(url=None):
 IP = my_ip()
 
 
-VASTS = {"simple": vast_simple, "custom": vast_custom}
+VASTS = {"simple": vast_simple, "custom": vast_custom, "multiple": vast_multiple}
 
 
 class My_Server(BaseHTTPRequestHandler):
     default_vast = "simple"  # set from CLI in __main__
 
-    def _server_media(self):
+    def _server_media(self, filepath):
         try:
-            size = os.path.getsize(MEDIA_FILE)
+            size = os.path.getsize(filepath)
         except OSError:
             self.send_response(404, "Media file not found")
             self.end_headers()
@@ -104,7 +105,7 @@ class My_Server(BaseHTTPRequestHandler):
         if self.command == "HEAD":
             return
 
-        with open(MEDIA_FILE, "rb") as f:
+        with open(filepath, "rb") as f:
             f.seek(start)
             remaining, chunk = length, 64 * 1024
             while remaining > 0:
@@ -124,13 +125,14 @@ class My_Server(BaseHTTPRequestHandler):
         wm = self.headers.get("X-Roku-Ad-Watermark")
 
         # 1) Media file request: serve the video (with Range support) and return.
-        if path in MEDIA_ROUTES:
+        filepath = MEDIA_FILES.get(path)
+        if filepath:
             print(f"\n=== MEDIA {self.command} {self.path} ===")
             print(f"Range: {self.headers.get('Range', '(none)')}")
             print(f"X-Roku-Ad-Watermark: {'PRESENT' if wm else 'ABSENT'}")
             if wm:
                 print(f"jwt: {wm}\n(decode at jwt.io)")
-            self._server_media()
+            self._server_media(filepath)
             return
 
         # 2) Ad request vs beacon/impression pixel.
@@ -203,7 +205,8 @@ if __name__ == "__main__":
         )
         print(f"  ad-request URL for raf.force.ad_url:  http://{IP}:{PORT}/")
         print(f"  force a specific VAST:                http://{IP}:{PORT}/custom")
-        print(f"  media file served at:                 http://{IP}:{PORT}/media.mp4")
+        print(f"  force multiple VAST:                  http://{IP}:{PORT}/multiple")
+        # print(f"  media file served at:                 http://{IP}:{PORT}/media.mp4")
         ThreadingHTTPServer(("0.0.0.0", PORT), My_Server).serve_forever()
     except KeyboardInterrupt:
         print("\nShutting server down.")
