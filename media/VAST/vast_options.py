@@ -49,7 +49,7 @@ def vast_stream1_custom(IP, PORT):
 </TrackingEvents>
 <MediaFiles>
 <MediaFile id="GDFP" delivery="progressive" width="640" height="360" type="video/mp4" bitrate="733" scalable="true" maintainAspectRatio="true">
-<![CDATA[http://{IP}:{PORT}/640x360.mp4]]>
+<![CDATA[http://{IP}:{PORT}/640x360_1.mp4]]>
 </MediaFile>
 </MediaFiles>
 </Linear></Creative></Creatives>
@@ -70,7 +70,7 @@ def vast_stream2_custom(IP, PORT):
 </TrackingEvents>
 <MediaFiles>
 <MediaFile id="GDFP" delivery="progressive" width="640" height="360" type="video/mp4" bitrate="733" scalable="true" maintainAspectRatio="true">
-<![CDATA[http://{IP}:{PORT}/640x360.mp4]]>
+<![CDATA[http://{IP}:{PORT}/640x360_2.mp4]]>
 </MediaFile>
 </MediaFiles>
 </Linear></Creative></Creatives>
@@ -91,7 +91,7 @@ def vast_stream3_custom(IP, PORT):
 </TrackingEvents>
 <MediaFiles>
 <MediaFile id="GDFP" delivery="progressive" width="640" height="360" type="video/mp4" bitrate="733" scalable="true" maintainAspectRatio="true">
-<![CDATA[http://{IP}:{PORT}/640x360.mp4]]>
+<![CDATA[http://{IP}:{PORT}/640x360_3.mp4]]>
 </MediaFile>
 </MediaFiles>
 </Linear></Creative></Creatives>

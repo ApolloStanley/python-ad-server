@@ -11,7 +11,9 @@ MEDIA_FILE = "./media/ad_one.mp4"
 MEDIA_FILES = {
     "/ad_one.mp4": "./media/ad_one.mp4",
     "/ad_two.mp4": "./media/ad_two.mp4",
-    "/640x360.mp4":"./media/640x360.mp4"
+    "/640x360_1.mp4":"./media/640x360_1.mp4",
+    "/640x360_2.mp4":"./media/640x360_2.mp4",
+    "/640x360_3.mp4":"./media/640x360_3.mp4"
 }
 
 
