@@ -4,13 +4,14 @@ import os
 import urllib.request
 from urllib.parse import urlparse, parse_qs
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from media.VAST.vast_options import vast_simple, vast_custom, vast_multiple, vast_stream2_custom, vast_stream1_custom, vast_error
+from media.VAST.vast_options import vast_simple, vast_custom, vast_multiple, vast_stream2_custom, vast_stream1_custom, vast_stream3_custom, vast_error
 
 PORT = 8082
 MEDIA_FILE = "./media/ad_one.mp4"
 MEDIA_FILES = {
     "/ad_one.mp4": "./media/ad_one.mp4",
     "/ad_two.mp4": "./media/ad_two.mp4",
+    "/640x360.mp4":"./media/640x360.mp4"
 }
 
 
@@ -59,7 +60,7 @@ def ensure_media_file(url=None):
 IP = my_ip()
 
 
-VASTS = {"simple": vast_simple, "custom": vast_custom, "multiple": vast_multiple, "stream2": vast_stream2_custom, "stream1": vast_stream1_custom, "error": vast_error}
+VASTS = {"simple": vast_simple, "custom": vast_custom, "multiple": vast_multiple, "stream2": vast_stream2_custom, "stream1": vast_stream1_custom, "stream3": vast_stream3_custom, "error": vast_error}
 
 
 class My_Server(BaseHTTPRequestHandler):
@@ -206,6 +207,7 @@ if __name__ == "__main__":
         print(f"  ad-request URL for raf.force.ad_url:  http://{IP}:{PORT}/")
         print(f"  force a specific VAST:                http://{IP}:{PORT}/custom")
         print(f"  force multiple VAST:                  http://{IP}:{PORT}/multiple")
+        print(f"  force stream3 VAST:                   http://{IP}:{PORT}/stream3")
         print(f"  force stream2 VAST:                   http://{IP}:{PORT}/stream2")
         print(f"  force stream1 VAST:                   http://{IP}:{PORT}/stream1")
         print(f"  force error VAST:                     http://{IP}:{PORT}/error")
