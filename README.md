@@ -6,7 +6,8 @@ as the ad creative, and logs every tracking beacon the player fires — includin
 the Roku ad watermark header — so you can confirm an ad actually launched and
 ran end to end.
 
-Everything is standard-library Python 3. No `pip install` required.
+Everything uses the Python standard library; Python 3.14 or later is required.
+No `pip install` required.
 
 ## What it does
 
@@ -25,15 +26,14 @@ prints whether it was `PRESENT` or `ABSENT`, along with the raw JWT if present
 
 ## Core layout
 
-The whole thing is one script. The pieces, top to bottom:
+The HTTP server is in `server.py`; VAST templates live under `media/VAST/`.
 
 **Configuration constants**
 - `PORT` — the listen port (default `8082`).
 - `MEDIA_FILE` — path to the `.mp4` served as the creative (default
   `./media/ad_one.mp4`).
-- `MEDIA_ROUTES` — the URL paths the player may request for the video
-  (`/media.mp4`, `/media`). These are just labels mapped to `MEDIA_FILE` on
-  disk; they don't have to match the file's real location.
+- `MEDIA_FILES` — maps media URLs to files. `/media.mp4` uses `MEDIA_FILE`;
+  named and multi-stream examples use the bundled sample videos.
 
 **Helpers**
 - `my_ip()` — figures out the machine's LAN IP so the VAST URLs are reachable
@@ -48,20 +48,21 @@ The whole thing is one script. The pieces, top to bottom:
   tracking only.
 - `vast_custom()` — a 30-second VAST with the full set of quartile beacons
   (`firstQuartile`, `midpoint`, `thirdQuartile`) plus `start` and `complete`.
-- `VASTS` — a dict mapping the names `"simple"` and `"custom"` to those
-  functions, used to look up which tag to serve.
+- `VASTS` — maps scenario names such as `"simple"`, `"custom"`, `"multiple"`,
+  and `"multiview"` to their template functions.
 
 **The request handler (`My_Server`)**
 - `_server_media()` — streams the `.mp4` with Range / `206 Partial Content`
-  support, returns `416` when the requested start is past end-of-file, and
+  support, including suffix ranges; returns `416` for unsatisfiable ranges and
   swallows broken-pipe errors that happen normally when a player seeks or skips.
 - `_handle()` — the single entry point for `GET`, `POST`, and `HEAD`. It
-  classifies each incoming request as one of three things:
-  - **Media request** (path is in `MEDIA_ROUTES`) → serve the video.
+  classifies each incoming request as one of four things:
+  - **Media request** (path is in `MEDIA_FILES`) → serve the video.
   - **Ad request** (no query string, path is `/`, `/vast`, `/ad`, or a named
     VAST like `/custom`) → serve a VAST document.
   - **Beacon / impression** (has a query string like `/?start`) → log it and
     return an empty `200` pixel.
+  - **Unknown URL** (no query and no matching route) → return `404`.
 
 The key distinction: a request only counts as an **ad request** when it has **no
 query string**. A beacon is identified *by* its query string (e.g. `/?complete`),
@@ -76,8 +77,11 @@ the ad."
 | `http://<IP>:<PORT>/vast`, `/ad` | Same as `/` — the default VAST |
 | `http://<IP>:<PORT>/simple` | The simple VAST, regardless of default |
 | `http://<IP>:<PORT>/custom` | The custom VAST with quartile beacons |
-| `http://<IP>:<PORT>/media.mp4`, `/media` | The `.mp4` creative (Range-enabled) |
+| `http://<IP>:<PORT>/multiple`, `/multiview`, `/stream1`, `/stream2`, `/stream3` | Multi-ad or stream-specific VAST examples |
+| `http://<IP>:<PORT>/media.mp4` | The file selected by `--media-file` (Range-enabled) |
+| `http://<IP>:<PORT>/ad_one.mp4`, `/ad_two.mp4`, `/640x360_1.mp4`–`/640x360_3.mp4` | Bundled sample videos (Range-enabled) |
 | `http://<IP>:<PORT>/?start`, `/?complete`, etc. | Tracking beacon → empty `200` |
+| Other paths without a query string | `404 Not Found` |
 
 ## Running the server
 
@@ -90,7 +94,7 @@ python3 server.py
 On start it prints the URLs you'll need, e.g.:
 
 ```
-Serving on http://192.168.1.50:8082/  (default VAST: simple) (ctrl-C to stop)
+Serving on http://192.168.1.50:8082/ (bound to 0.0.0.0; default VAST: simple) (ctrl-C to stop)
   ad-request URL for raf.force.ad_url:  http://192.168.1.50:8082/
   force a specific VAST:                http://192.168.1.50:8082/custom
   media file served at:                 http://192.168.1.50:8082/media.mp4
@@ -102,8 +106,9 @@ Stop it with `Ctrl-C`.
 
 | Flag | Default | Purpose |
 |------|---------|---------|
-| `--vast {simple,custom}` | `simple` | Which VAST is served at `/`, `/vast`, `/ad` |
-| `--media-file PATH` | `./media/ad_one.mp4` | Local `.mp4` to serve as the creative |
+| `--vast NAME` | `simple` | Which VAST is served at `/`, `/vast`, `/ad`; see `VASTS` in `server.py` for names |
+| `--host ADDRESS` | `0.0.0.0` | Interface to bind; use `127.0.0.1` for local-only access |
+| `--media-file PATH` | `./media/ad_one.mp4` | Local `.mp4` used by the simple VAST at `/media.mp4` |
 | `--media-url URL` | (none) | Direct `.mp4` URL to download once if the media file is missing |
 
 Examples:
@@ -117,14 +122,28 @@ python3 server.py --media-file ./media/ad_one.mp4
 
 # Auto-download a creative the first time if it's not on disk
 python3 server.py --media-url https://example.com/sample.mp4
+
+# Bind only to this computer (Roku devices on the network won't be able to connect)
+python3 server.py --host 127.0.0.1
 ```
 
 ### Prerequisites
 
-- Python 3.
+- Python 3.14 or later.
 - An `.mp4` at `MEDIA_FILE` (or pass `--media-url` to fetch one once).
 - The Roku device and the machine running this server on the **same network**,
   so the device can reach the LAN IP the server prints.
+
+By default, the server listens on all interfaces and prints the full watermark
+JWT when present. Use it only on a trusted network and avoid sharing those logs.
+
+### Tests
+
+Run the standard-library test suite with:
+
+```bash
+python3 -m unittest discover -s tests -v
+```
 
 ## Setting `raf.force.ad_url`
 

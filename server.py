@@ -11,6 +11,7 @@ from media.VAST.vast_options import vast_simple, vast_custom, vast_multiple, vas
 PORT = 8082
 MEDIA_FILE = "./media/ad_one.mp4"
 MEDIA_FILES = {
+    "/media.mp4": MEDIA_FILE,
     "/ad_one.mp4": "./media/ad_one.mp4",
     "/ad_two.mp4": "./media/ad_two.mp4",
     "/640x360_1.mp4":"./media/640x360_1.mp4",
@@ -82,19 +83,26 @@ class My_Server(BaseHTTPRequestHandler):
         range_header = self.headers.get("Range")
         if range_header and range_header.startswith("bytes="):
             try:
-                s, _, e = range_header.split("=", 1)[1].partition("-")
-                if s.strip():
-                    start = int(s)
-                if e.strip():
-                    end = int(e)
-                # 416 only when the START is past EOF; an END past EOF is just clamped.
-                if start > end or start >= size:
-                    self.send_response(416, "Requested Range Not Satisfiable")
-                    self.send_header("Content-Range", f"bytes */{size}")
-                    self.end_headers()
-                    return
-                end = min(end, size - 1)
-                status = 206
+                range_spec = range_header.split("=", 1)[1]
+                if "," not in range_spec:
+                    range_start, range_end = range_spec.split("-", 1)
+                    if not range_start:
+                        suffix_length = int(range_end)
+                        if suffix_length <= 0 or size == 0:
+                            start = size
+                        else:
+                            start = max(size - suffix_length, 0)
+                        end = size - 1
+                    else:
+                        start = int(range_start)
+                        end = int(range_end) if range_end else size - 1
+                    if start >= size or end < start:
+                        self.send_response(416, "Requested Range Not Satisfiable")
+                        self.send_header("Content-Range", f"bytes */{size}")
+                        self.end_headers()
+                        return
+                    end = min(end, size - 1)
+                    status = 206
             except ValueError:
                 start, end, status = 0, size - 1, 200
 
@@ -144,12 +152,16 @@ class My_Server(BaseHTTPRequestHandler):
         # A beacon is identified by its query string (e.g. /?start), so a
         # request only counts as an ad request when it has NO query.
         route = path.lstrip("/")
-        if not parsed.query and route in VASTS:  # e.g. GET /custom
-            kind, is_ad_request = route, True
-        elif not parsed.query and path in ("/", "/vast", "/ad"):  # default ad
-            kind, is_ad_request = self.default_vast, True
-        else:
-            is_ad_request = False
+        kind = None
+        if not parsed.query:
+            if route in VASTS:  # e.g. GET /custom
+                kind = route
+            elif path in ("/", "/vast", "/ad"):  # default ad
+                kind = self.default_vast
+            else:
+                self.send_error(404, "Not Found")
+                return
+        is_ad_request = kind is not None
 
         label = parsed.query or route or "(none)"
         tag = "AD-REQUEST" if is_ad_request else "BEACON"
@@ -159,7 +171,7 @@ class My_Server(BaseHTTPRequestHandler):
         if wm:
             print(f"jwt: {wm}\n(decode at jwt.io)")
 
-        if is_ad_request:
+        if kind is not None:
             body = VASTS[kind](IP, PORT).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/xml")
@@ -190,6 +202,11 @@ if __name__ == "__main__":
             help=f"default VAST served at '/'. Options: {list(VASTS.keys())}",
         )
         ap.add_argument(
+            "--host",
+            default="0.0.0.0",
+            help="interface to bind (default: all interfaces)",
+        )
+        ap.add_argument(
             "--media-file",
             default=MEDIA_FILE,
             help="path to the local .mp4 served at /media.mp4",
@@ -203,11 +220,12 @@ if __name__ == "__main__":
 
         My_Server.default_vast = args.vast
         MEDIA_FILE = args.media_file
+        MEDIA_FILES["/media.mp4"] = MEDIA_FILE
         ensure_media_file(args.media_url)
+        if args.host != "0.0.0.0":
+            IP = args.host
 
-        print(
-            f"Serving on http://{IP}:{PORT}/  (default VAST: {args.vast}) (ctrl-C to stop)"
-        )
+        print(f"Serving on http://{IP}:{PORT}/ (bound to {args.host}; default VAST: {args.vast}) (ctrl-C to stop)")
         print(f"  ad-request URL for raf.force.ad_url:  http://{IP}:{PORT}/")
         print(f"  force a specific VAST:                http://{IP}:{PORT}/custom")
         print(f"  force multiple VAST:                  http://{IP}:{PORT}/multiple")
@@ -220,7 +238,7 @@ if __name__ == "__main__":
         print(f"  force ewmPj998 VAST:                  http://{IP}:{PORT}/ewmPj998")
         print(f"  force multiview VAST:                 http://{IP}:{PORT}/multiview")
         # print(f"  media file served at:                 http://{IP}:{PORT}/media.mp4")
-        ThreadingHTTPServer(("0.0.0.0", PORT), My_Server).serve_forever()
+        ThreadingHTTPServer((args.host, PORT), My_Server).serve_forever()
     except KeyboardInterrupt:
         print("\nShutting server down.")
         exit(0)

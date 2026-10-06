@@ -14,6 +14,7 @@ def vast_simple(IP, PORT):
 </Linear></Creative></Creatives>
 </InLine></Ad></VAST>"""
 
+
 def vast_custom(IP, PORT):
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <VAST version="2.0"><Ad id="custom-beacon-test"><InLine>
@@ -32,6 +33,7 @@ def vast_custom(IP, PORT):
 </MediaFile></MediaFiles>
 </Linear></Creative></Creatives>
 </InLine></Ad></VAST>"""
+
 
 def vast_stream1_custom(IP, PORT):
     return f"""<?xml version="1.0" encoding="UTF-8"?>
@@ -54,6 +56,7 @@ def vast_stream1_custom(IP, PORT):
 </Linear></Creative></Creatives>
 </InLine></Ad></VAST>"""
 
+
 def vast_stream2_custom(IP, PORT):
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <VAST version="2.0"><Ad id="custom-beacon-test-stream2"><InLine>
@@ -75,6 +78,7 @@ def vast_stream2_custom(IP, PORT):
 </Linear></Creative></Creatives>
 </InLine></Ad></VAST>"""
 
+
 def vast_stream3_custom(IP, PORT):
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <VAST version="2.0"><Ad id="custom-beacon-test-stream3"><InLine>
@@ -95,6 +99,7 @@ def vast_stream3_custom(IP, PORT):
 </MediaFiles>
 </Linear></Creative></Creatives>
 </InLine></Ad></VAST>"""
+
 
 def vast_multiple(IP, PORT):
     return f"""<?xml version="1.0" encoding="UTF-8"?>
@@ -181,6 +186,7 @@ def vast_multiple(IP, PORT):
 </InLine></Ad>
 </VAST>"""
 
+
 def vast_error(IP, PORT):
     template = r"""<?xml version="1.0" encoding="UTF-8"?>
 <VAST version="3.0">
@@ -266,6 +272,7 @@ def vast_error(IP, PORT):
 </VAST>"""
     return template.replace("__IP__", IP).replace("__PORT__", str(PORT))
 
+
 def AA_OK_SMS_FIRST_V1(IP, PORT):
     xml_head = f"""<?xml version="1.0" encoding="UTF-8"?>
 <VAST version="3.0">
@@ -289,7 +296,7 @@ def AA_OK_SMS_FIRST_V1(IP, PORT):
               <Tracking event="complete"><![CDATA[http://{IP}:{PORT}/?complete]]></Tracking>
             </TrackingEvents>
             <MediaFiles>
-              <MediaFile delivery="progressive" type="video/mp4" width="640" height="360"><![CDATA[http://{IP}:{PORT}/640x360.mp4]]></MediaFile>
+              <MediaFile delivery="progressive" type="video/mp4" width="640" height="360"><![CDATA[http://{IP}:{PORT}/640x360_1.mp4]]></MediaFile>
             </MediaFiles>
           </Linear>
         </Creative>
