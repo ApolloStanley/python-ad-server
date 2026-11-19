@@ -47,6 +47,19 @@ class ServerTests(unittest.TestCase):
         connection.close()
         return result
 
+    def test_multiview_replaces_macros(self):
+        status, _, body = self.request("/multiview?mvsi=abc&mvcv=2&mvsp=50&mvfv=a%20b")
+        text = body.decode()
+        self.assertEqual(status, 200)
+        self.assertIn("sessionId=abc&concurrentViews=2&screePercent=50&focusedView=a%20b", text)
+        self.assertNotIn("ROKU_MV_", text)
+
+    def test_multiview_missing_params_are_empty(self):
+        _, _, body = self.request("/multiview")
+        text = body.decode()
+        self.assertIn("sessionId=&concurrentViews=&", text)
+        self.assertNotIn("ROKU_MV_", text)
+
     def test_media_route_serves_configured_file(self):
         status, headers, body = self.request("/media.mp4")
         self.assertEqual(status, 200)

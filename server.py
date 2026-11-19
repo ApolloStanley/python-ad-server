@@ -2,13 +2,19 @@ import argparse
 import subprocess
 import os
 import urllib.request
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, quote
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from media.VAST.rsg_options import iZACgmeQ, ewmPj998
 from media.VAST.multiview_options import vast_multiple_mv
 from media.VAST.vast_options import vast_simple, vast_custom, vast_multiple, vast_stream2_custom, vast_stream1_custom, vast_stream3_custom, vast_error, AA_OK_SMS_FIRST_V1
 
 PORT = 8082
+MV_MACROS = {
+    "mvsi": "ROKU_MV_SESSION_ID",
+    "mvcv": "ROKU_MV_NUM_CONC_VIEWS",
+    "mvsp": "ROKU_MV_SCREEN_PCT",
+    "mvfv": "ROKU_MV_FOCUSED_VIEW",
+}
 MEDIA_FILE = "./media/ad_one.mp4"
 MEDIA_FILES = {
     "/media.mp4": MEDIA_FILE,
@@ -153,7 +159,9 @@ class My_Server(BaseHTTPRequestHandler):
         # request only counts as an ad request when it has NO query.
         route = path.lstrip("/")
         kind = None
-        if not parsed.query:
+        if route == "multiview":  # RAF GET with mv* params; query is expected
+            kind = route
+        elif not parsed.query:
             if route in VASTS:  # e.g. GET /custom
                 kind = route
             elif path in ("/", "/vast", "/ad"):  # default ad
@@ -172,7 +180,11 @@ class My_Server(BaseHTTPRequestHandler):
             print(f"jwt: {wm}\n(decode at jwt.io)")
 
         if kind is not None:
-            body = VASTS[kind](IP, PORT).encode()
+            vast = VASTS[kind](IP, PORT)
+            if kind == "multiview":
+                for param, macro in MV_MACROS.items():
+                    vast = vast.replace(macro, quote(qs.get(param, [""])[0], safe=""))
+            body = vast.encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/xml")
         else:
@@ -236,7 +248,7 @@ if __name__ == "__main__":
         print(f"  force AA_OK_SMS_FIRST_V1 VAST:        http://{IP}:{PORT}/aa_ok_sms_first_v1")
         print(f"  force rsg_options VAST:               http://{IP}:{PORT}/rsg_options")
         print(f"  force ewmPj998 VAST:                  http://{IP}:{PORT}/ewmPj998")
-        print(f"  force multiview VAST:                 http://{IP}:{PORT}/multiview")
+        print(f"  force multiview VAST:                 http://{IP}:{PORT}/multiview?mvsi=ROKU_MV_SESSION_ID&mvcv=ROKU_MV_NUM_CONC_VIEWS&mvsp=ROKU_MV_SCREEN_PCT&mvfv=ROKU_MV_FOCUSED_VIEW")
         # print(f"  media file served at:                 http://{IP}:{PORT}/media.mp4")
         ThreadingHTTPServer((args.host, PORT), My_Server).serve_forever()
     except KeyboardInterrupt:
